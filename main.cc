@@ -344,7 +344,51 @@ class MyQueue {
     Guarantees that can be made about the queue:
     - Multiple producers can add concurrently with 100% success
     Non-guarantees:
-    - At any moment in time, at least one consumer can remove an element
+    - The removal of an item may fail even if the queue is not empty
+    */
+    std::atomic<Node<T>*> first{nullptr};
+    std::atomic<std::atomic<Node<T>*>*> last{&first};
+public:
+    void push(Node<T>* t) {
+        t->next.store(nullptr);
+        auto prev = last.exchange(&t->next);
+        prev->store(t);
+    }
+
+    bool pop(Node<T>*& ret) {
+        auto my_first = first.exchange(nullptr); // de-facto lock
+        if (my_first == nullptr) { 
+            return false; // queue is empty
+        }
+
+        auto next = my_first->next.load();
+        if (next == nullptr) {
+            // we removed the last element, reset the queue
+            auto expected = &my_first->next;
+            if (!last.compare_exchange_strong(expected, &first)) {
+                // someone added something, try again later
+                // revert first back to its original value
+                first.store(my_first);
+                return false;
+            }
+        } else {
+            // advance the queue (we know this is safe from adds
+            // because last must at least be after &next->next)
+            // thus no add can interfere
+            first.store(next);
+        }
+        
+        ret = my_first;
+        return true;
+    }
+};
+
+template <typename T>
+class MyQueueDouble {
+    /*
+    Guarantees that can be made about the queue:
+    - Multiple producers can add concurrently with 100% success
+    Non-guarantees:
     - The removal of an item may fail even if the queue is not empty
     */
     std::atomic<Node<T>*> first{nullptr};
@@ -387,58 +431,224 @@ public:
     }
 };
 
+
+// =============================================
+// 8. My new implementation
+// =============================================
+
+// We improve the previous MyQueue by guaranteeing
+//  that at least 1 remove will succeed any time a
+//  remove is called with an argument.
+// We do this by using a dummy node.
+// This is O(1) for add/remove/remove_all
+template <typename T>
+class MyQueue2 {
+    Node<T> dummy;
+    std::atomic<Node<T>*> first{&dummy};
+    std::atomic<std::atomic<Node<T>*>*> last{&dummy.next};
+
+public:
+    void push(Node<T>* n) {
+        n->next.store(nullptr, std::memory_order_relaxed);
+        std::atomic<Node<T>*>* prev = last.exchange(&n->next, std::memory_order_acq_rel);
+        prev->store(n, std::memory_order_release);
+    }
+
+    bool pop(Node<T>*& ret) {
+        auto my_first = first.exchange(nullptr); // de-facto lock
+        if (my_first == nullptr) { 
+            return false; // queue is locked
+        }
+
+        auto next = my_first->next.exchange(nullptr);
+        if (next == nullptr) {
+            first.store(my_first); // restore dummy
+            return false; // queue is empty
+        }
+        
+        // at this point, my_first should be completely separated
+        if (my_first == &dummy) {
+            auto prev = last.exchange(&my_first->next);
+            prev->store(my_first);
+
+            my_first = next; // recreate the virtual state of just acquiring my_first
+            next = my_first->next.exchange(nullptr); // we know next was not nullptr, so we use it
+            // we also know that there is at minimum a dummy node so we proceed
+            // !! but what if someone was adding and we happen to read next in an inconsistent state? !!
+        }
+
+        // advance the queue (we know this is safe from adds
+        // because there is always at least the dummy in between
+        // and we know that we are not the dummy
+        first.store(next);
+        ret = my_first;
+        return true;
+    }
+};
+
+template <typename T>
+class MyQueue2Double {
+    Node<T> dummy;
+    std::atomic<Node<T>*> first{&dummy};
+    std::atomic<std::atomic<Node<T>*>*> last{&dummy.next};
+
+public:
+    void push(Node<T>* n) {
+        n->next.store(nullptr, std::memory_order_relaxed);
+        std::atomic<Node<T>*>* prev = last.exchange(&n->next, std::memory_order_acq_rel);
+        prev->store(n, std::memory_order_release);
+    }
+
+    bool pop(Node<T>*& ret) {
+        auto my_first = first.exchange(nullptr); // de-facto lock
+        if (my_first == nullptr) {
+            my_first = first.exchange(nullptr); // double check
+        }
+        if (my_first == nullptr) { 
+            return false; // queue is locked
+        }
+
+        auto next = my_first->next.exchange(nullptr);
+        if (next == nullptr) {
+            first.store(my_first); // restore dummy
+            return false; // queue is empty
+        }
+        
+        // at this point, my_first should be completely separated
+        if (my_first == &dummy) {
+            auto prev = last.exchange(&my_first->next);
+            prev->store(my_first);
+
+            my_first = next; // recreate the virtual state of just acquiring my_first
+            next = my_first->next.exchange(nullptr); // we know next was not nullptr, so we use it
+            // we also know that there is at minimum a dummy node so we proceed
+            // !! but what if someone was adding and we happen to read next in an inconsistent state? !!
+        }
+
+        // advance the queue (we know this is safe from adds
+        // because there is always at least the dummy in between
+        // and we know that we are not the dummy
+        first.store(next);
+        ret = my_first;
+        return true;
+    }
+};
+
+
+// =============================================
+// 9. The inspiration (Vyukov)
+// =============================================
+template <typename T>
+class VyukovQueue {
+    Node<T> dummy;                  // permanent sentinel at head
+    std::atomic<Node<T>*> head;     // dequeue starts here
+    std::atomic<Node<T>*> tail;     // enqueue appends here
+
+public:
+    VyukovQueue() {
+        dummy.next.store(nullptr, std::memory_order_relaxed);
+        head.store(&dummy, std::memory_order_relaxed);
+        tail.store(&dummy, std::memory_order_relaxed);
+    }
+
+    // Multiple producers, wait-free
+    void push(Node<T>* n) {
+        n->next.store(nullptr, std::memory_order_relaxed);
+
+        Node<T>* prev = tail.exchange(n, std::memory_order_acq_rel);
+        prev->next.store(n, std::memory_order_release);
+    }
+
+    // Single consumer, wait-free
+    bool pop(Node<T>*& ret) {
+        Node<T>* h = head.exchange(nullptr);
+        if (h == nullptr) return false; // locked
+
+        Node<T>* nxt = h->next.load(std::memory_order_acquire);
+        if (nxt == nullptr) {
+            head.store(h);
+            return false; // queue empty
+        }
+
+        // Advance head forward
+        ret = nxt;
+        head.store(nxt, std::memory_order_release);
+        return true;
+    }
+};
+
+
+
 // =============================================
 // Benchmark Harness
 // =============================================
 template <typename Queue>
-void run_benchmark(const std::string& name, int num_producers, int num_consumers, int items_per_thread, bool yields) {
-    Queue q;
-    MyQueue<Node<int>*> freelist;
-    std::atomic<int> produced{0};
-    std::atomic<int> consumed{0};
-    const int total_items = num_producers * items_per_thread;
+void run_benchmark(const std::string& name, 
+        int num_repeats, 
+        int min_producers, int max_producers,
+        int total_producers_consumers,
+        int items_per_thread,
+        bool yields
+) {
+    for (int num_producers = min_producers; num_producers <= max_producers; ++num_producers) {
+        const int num_consumers = total_producers_consumers - num_producers;
+        const int total_items = num_producers * items_per_thread;
+        unsigned long long total_ms = 0;
 
-    auto producer = [&](int id) {
-        for (int i = 0; i < items_per_thread; i++) {
-            q.push(new Node<int>(i + id * items_per_thread));
-            produced.fetch_add(1, std::memory_order_relaxed);
-        }
-    };
+        for (int i = 0; i < num_repeats; ++i) {
+            Queue q;
+            MyQueue<Node<int>*> freelist;
+            std::atomic<int> produced{0};
+            std::atomic<int> consumed{0};
 
-    auto consumer = [&]() {
-        Node<int>* val;
-        while (consumed.load(std::memory_order_relaxed) < total_items) {
-            if (q.pop(val)) {
-                freelist.push(new Node<Node<int>*>(val));
-                consumed.fetch_add(1, std::memory_order_relaxed);
-            } else if (yields) {
-                std::this_thread::yield();
+            auto producer = [&](int id) {
+                for (int i = 0; i < items_per_thread; i++) {
+                    q.push(new Node<int>(i + id * items_per_thread));
+                    produced.fetch_add(1, std::memory_order_relaxed);
+                }
+            };
+
+            auto consumer = [&]() {
+                Node<int>* val = nullptr;
+                while (consumed.load(std::memory_order_relaxed) < total_items) {
+                    if (q.pop(val)) {
+                        freelist.push(new Node<Node<int>*>(val));
+                        consumed.fetch_add(1, std::memory_order_relaxed);
+                    } else if (yields) {
+                        std::this_thread::yield();
+                    }
+                }
+            };
+
+            std::this_thread::yield(); // let the system know we are not malicious
+            auto start = std::chrono::high_resolution_clock::now();
+
+            std::vector<std::thread> threads;
+            for (int i = 0; i < num_producers; i++)
+                threads.emplace_back(producer, i);
+            for (int i = 0; i < num_consumers; i++)
+                threads.emplace_back(consumer);
+
+            for (auto& t : threads) t.join();
+            std::this_thread::yield(); // again, let's stay on good terms with EEVDFS
+
+            auto end = std::chrono::high_resolution_clock::now();
+            auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+            auto ms = ns / 1000000;
+            total_ms += ms;
+
+            // delete everything from freelist
+            Node<Node<int>*>* node;
+            while (freelist.pop(node)) {
+                delete node->val;
+                delete node;
             }
         }
-    };
 
-    auto start = std::chrono::high_resolution_clock::now();
-
-    std::vector<std::thread> threads;
-    for (int i = 0; i < num_producers; i++)
-        threads.emplace_back(producer, i);
-    for (int i = 0; i < num_consumers; i++)
-        threads.emplace_back(consumer);
-
-    for (auto& t : threads) t.join();
-
-    auto end = std::chrono::high_resolution_clock::now();
-    auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-    auto ms = ns / 1000000;
-
-    std::cout << name << ": " << total_items / ms << " ops/ms"
-              << " (" << total_items << " items in " << ms << "ms)\n";
-
-    // delete everything from freelist
-    Node<Node<int>*>* node;
-    while (freelist.pop(node)) {
-        delete node->val;
-        delete node;
+        auto ms = total_ms / num_repeats;
+        std::cout << name << ": " << total_items / ms << " ops/ms"
+                << " (" << total_items << " items in " << ms << "ms average) at "
+                << num_producers << '-' << num_consumers << " split\n";
     }
 }
 
@@ -446,23 +656,35 @@ void run_benchmark(const std::string& name, int num_producers, int num_consumers
 // Main
 // =============================================
 extern "C" int main() {
-    int producers = 4;
-    int consumers = 4;
+    int total_producers_consumers = 8;
+    int min_producers = 2;
+    int max_producers = 6;
+    int num_repeats = 5;
     int items = 1000000;
 
-    run_benchmark<MutexQueue<int>>("MutexQueue", producers, consumers, items, true);
-    run_benchmark<MutexQueueMiss<int>>("MutexQueueMiss", producers, consumers, items, true);
-    run_benchmark<MSQueue<int>>("MSQueue", producers, consumers, items, true);
-    run_benchmark<MSQueueMiss<int>>("MSQueueMiss", producers, consumers, items, true);
-    run_benchmark<TwoLockQueue<int>>("TwoLockQueue", producers, consumers, items, true);
-    run_benchmark<TwoLockQueueMiss<int>>("TwoLockQueueMiss", producers, consumers, items, true);
-    run_benchmark<MyQueue<int>>("MyQueue", producers, consumers, items, true);
+    std::cout << "======== running WITH yields... ======== \n";
+    run_benchmark<MyQueue<int>>("MyQueue", num_repeats, min_producers, max_producers, total_producers_consumers, items, true);
+    run_benchmark<MyQueueDouble<int>>("MyQueueDouble", num_repeats, min_producers, max_producers, total_producers_consumers, items, true);
+    run_benchmark<MyQueue2<int>>("MyQueue2", num_repeats, min_producers, max_producers, total_producers_consumers, items, true);
+    run_benchmark<MyQueue2Double<int>>("MyQueue2Double", num_repeats, min_producers, max_producers, total_producers_consumers, items, true);
+    run_benchmark<VyukovQueue<int>>("VyukovQueue", num_repeats, min_producers, max_producers, total_producers_consumers, items, true);
+    run_benchmark<MutexQueue<int>>("MutexQueue", num_repeats, min_producers, max_producers, total_producers_consumers, items, true);
+    run_benchmark<MutexQueueMiss<int>>("MutexQueueMiss", num_repeats, min_producers, max_producers, total_producers_consumers, items, true);
+    run_benchmark<MSQueue<int>>("MSQueue", num_repeats, min_producers, max_producers, total_producers_consumers, items, true);
+    run_benchmark<MSQueueMiss<int>>("MSQueueMiss", num_repeats, min_producers, max_producers, total_producers_consumers, items, true);
+    run_benchmark<TwoLockQueue<int>>("TwoLockQueue", num_repeats, min_producers, max_producers, total_producers_consumers, items, true);
+    run_benchmark<TwoLockQueueMiss<int>>("TwoLockQueueMiss", num_repeats, min_producers, max_producers, total_producers_consumers, items, true);
 
-    run_benchmark<MutexQueue<int>>("MutexQueue", producers, consumers, items, false);
-    run_benchmark<MutexQueueMiss<int>>("MutexQueueMiss", producers, consumers, items, false);
-    run_benchmark<MSQueue<int>>("MSQueue", producers, consumers, items, false);
-    run_benchmark<MSQueueMiss<int>>("MSQueueMiss", producers, consumers, items, false);
-    run_benchmark<TwoLockQueue<int>>("TwoLockQueue", producers, consumers, items, false);
-    run_benchmark<TwoLockQueueMiss<int>>("TwoLockQueueMiss", producers, consumers, items, false);
-    run_benchmark<MyQueue<int>>("MyQueue", producers, consumers, items, false);
+    std::cout << "======== running WITHOUT yields... ======== \n";
+    run_benchmark<MyQueue<int>>("MyQueue", num_repeats, min_producers, max_producers, total_producers_consumers, items, false);
+    run_benchmark<MyQueueDouble<int>>("MyQueueDouble", num_repeats, min_producers, max_producers, total_producers_consumers, items, false);
+    run_benchmark<MyQueue2<int>>("MyQueue2", num_repeats, min_producers, max_producers, total_producers_consumers, items, false);
+    run_benchmark<MyQueue2Double<int>>("MyQueue2Double", num_repeats, min_producers, max_producers, total_producers_consumers, items, true);
+    run_benchmark<VyukovQueue<int>>("VyukovQueue", num_repeats, min_producers, max_producers, total_producers_consumers, items, false);
+    run_benchmark<MutexQueue<int>>("MutexQueue", num_repeats, min_producers, max_producers, total_producers_consumers, items, false);
+    run_benchmark<MutexQueueMiss<int>>("MutexQueueMiss", num_repeats, min_producers, max_producers, total_producers_consumers, items, false);
+    run_benchmark<MSQueue<int>>("MSQueue", num_repeats, min_producers, max_producers, total_producers_consumers, items, false);
+    run_benchmark<MSQueueMiss<int>>("MSQueueMiss", num_repeats, min_producers, max_producers, total_producers_consumers, items, false);
+    run_benchmark<TwoLockQueue<int>>("TwoLockQueue", num_repeats, min_producers, max_producers, total_producers_consumers, items, false);
+    run_benchmark<TwoLockQueueMiss<int>>("TwoLockQueueMiss", num_repeats, min_producers, max_producers, total_producers_consumers, items, false);
 }
