@@ -1,14 +1,115 @@
-MutexQueue: 4065 ops/ms (4000000 items in 984ms)
-MutexQueueMiss: 3838 ops/ms (4000000 items in 1042ms)
-MSQueue: 3663 ops/ms (4000000 items in 1092ms)
-MSQueueMiss: 3898 ops/ms (4000000 items in 1026ms)
-TwoLockQueue: 3472 ops/ms (4000000 items in 1152ms)
-TwoLockQueueMiss: 2781 ops/ms (4000000 items in 1438ms)
-MyQueue: 5979 ops/ms (4000000 items in 669ms)
-MutexQueue: 4040 ops/ms (4000000 items in 990ms)
-MutexQueueMiss: 925 ops/ms (4000000 items in 4324ms)
-MSQueue: 4110 ops/ms (4000000 items in 973ms)
-MSQueueMiss: 3308 ops/ms (4000000 items in 1209ms)
-TwoLockQueue: 3639 ops/ms (4000000 items in 1099ms)
-TwoLockQueueMiss: 1485 ops/ms (4000000 items in 2692ms)
-MyQueue: 5532 ops/ms (4000000 items in 723ms)
+[SUMMARY]: MyQueue2 has highest throughput; removal double-checking has benefits when there are more producers than consumers; MSQueue is most consistent between different producer-consumer splits. 
+======== running WITH yields... ======== 
+MyQueue: 4796 ops/ms (2000000 items in 417ms average) at 2-6 split
+MyQueue: 5338 ops/ms (3000000 items in 562ms average) at 3-5 split
+MyQueue: 5822 ops/ms (4000000 items in 687ms average) at 4-4 split
+MyQueue: 6195 ops/ms (5000000 items in 807ms average) at 5-3 split
+MyQueue: 6688 ops/ms (6000000 items in 897ms average) at 6-2 split
+MyQueueDouble: 4629 ops/ms (2000000 items in 432ms average) at 2-6 split
+MyQueueDouble: 5145 ops/ms (3000000 items in 583ms average) at 3-5 split
+MyQueueDouble: 5706 ops/ms (4000000 items in 701ms average) at 4-4 split
+MyQueueDouble: 6119 ops/ms (5000000 items in 817ms average) at 5-3 split
+MyQueueDouble: 6600 ops/ms (6000000 items in 909ms average) at 6-2 split
+MyQueue2: 6211 ops/ms (2000000 items in 322ms average) at 2-6 split
+MyQueue2: 6479 ops/ms (3000000 items in 463ms average) at 3-5 split
+MyQueue2: 6734 ops/ms (4000000 items in 594ms average) at 4-4 split
+MyQueue2: 6821 ops/ms (5000000 items in 733ms average) at 5-3 split
+MyQueue2: 7326 ops/ms (6000000 items in 819ms average) at 6-2 split
+MyQueue2Double: 6191 ops/ms (2000000 items in 323ms average) at 2-6 split
+MyQueue2Double: 6355 ops/ms (3000000 items in 472ms average) at 3-5 split
+MyQueue2Double: 6655 ops/ms (4000000 items in 601ms average) at 4-4 split
+MyQueue2Double: 6925 ops/ms (5000000 items in 722ms average) at 5-3 split
+MyQueue2Double: 7462 ops/ms (6000000 items in 804ms average) at 6-2 split
+
+VyukovQueue: 6079 ops/ms (2000000 items in 329ms average) at 2-6 split
+VyukovQueue: 6818 ops/ms (3000000 items in 440ms average) at 3-5 split
+VyukovQueue: 7130 ops/ms (4000000 items in 561ms average) at 4-4 split
+VyukovQueue: 7215 ops/ms (5000000 items in 693ms average) at 5-3 split
+VyukovQueue: 7009 ops/ms (6000000 items in 856ms average) at 6-2 split
+MutexQueue: 1881 ops/ms (2000000 items in 1063ms average) at 2-6 split
+MutexQueue: 2230 ops/ms (3000000 items in 1345ms average) at 3-5 split
+MutexQueue: 2652 ops/ms (4000000 items in 1508ms average) at 4-4 split
+MutexQueue: 2824 ops/ms (5000000 items in 1770ms average) at 5-3 split
+MutexQueue: 3159 ops/ms (6000000 items in 1899ms average) at 6-2 split
+MutexQueueMiss: 1828 ops/ms (2000000 items in 1094ms average) at 2-6 split
+MutexQueueMiss: 2235 ops/ms (3000000 items in 1342ms average) at 3-5 split
+MutexQueueMiss: 2405 ops/ms (4000000 items in 1663ms average) at 4-4 split
+MutexQueueMiss: 2637 ops/ms (5000000 items in 1896ms average) at 5-3 split
+MutexQueueMiss: 3094 ops/ms (6000000 items in 1939ms average) at 6-2 split
+MSQueue: 3496 ops/ms (2000000 items in 572ms average) at 2-6 split
+MSQueue: 3285 ops/ms (3000000 items in 913ms average) at 3-5 split
+MSQueue: 3581 ops/ms (4000000 items in 1117ms average) at 4-4 split
+MSQueue: 3739 ops/ms (5000000 items in 1337ms average) at 5-3 split
+MSQueue: 3811 ops/ms (6000000 items in 1574ms average) at 6-2 split
+MSQueueMiss: 3623 ops/ms (2000000 items in 552ms average) at 2-6 split
+MSQueueMiss: 3529 ops/ms (3000000 items in 850ms average) at 3-5 split
+MSQueueMiss: 3642 ops/ms (4000000 items in 1098ms average) at 4-4 split
+MSQueueMiss: 3906 ops/ms (5000000 items in 1280ms average) at 5-3 split
+MSQueueMiss: 4024 ops/ms (6000000 items in 1491ms average) at 6-2 split
+TwoLockQueue: 3257 ops/ms (2000000 items in 614ms average) at 2-6 split
+TwoLockQueue: 3222 ops/ms (3000000 items in 931ms average) at 3-5 split
+TwoLockQueue: 3172 ops/ms (4000000 items in 1261ms average) at 4-4 split
+TwoLockQueue: 3246 ops/ms (5000000 items in 1540ms average) at 5-3 split
+TwoLockQueue: 3333 ops/ms (6000000 items in 1800ms average) at 6-2 split
+TwoLockQueueMiss: 2635 ops/ms (2000000 items in 759ms average) at 2-6 split
+TwoLockQueueMiss: 2659 ops/ms (3000000 items in 1128ms average) at 3-5 split
+TwoLockQueueMiss: 2713 ops/ms (4000000 items in 1474ms average) at 4-4 split
+TwoLockQueueMiss: 2893 ops/ms (5000000 items in 1728ms average) at 5-3 split
+TwoLockQueueMiss: 3215 ops/ms (6000000 items in 1866ms average) at 6-2 split
+======== running WITHOUT yields... ======== 
+MyQueue: 3210 ops/ms (2000000 items in 623ms average) at 2-6 split
+MyQueue: 4143 ops/ms (3000000 items in 724ms average) at 3-5 split
+MyQueue: 4926 ops/ms (4000000 items in 812ms average) at 4-4 split
+MyQueue: 5827 ops/ms (5000000 items in 858ms average) at 5-3 split
+MyQueue: 6369 ops/ms (6000000 items in 942ms average) at 6-2 split
+MyQueueDouble: 2713 ops/ms (2000000 items in 737ms average) at 2-6 split
+MyQueueDouble: 4160 ops/ms (3000000 items in 721ms average) at 3-5 split
+MyQueueDouble: 4889 ops/ms (4000000 items in 818ms average) at 4-4 split
+MyQueueDouble: 5701 ops/ms (5000000 items in 877ms average) at 5-3 split
+MyQueueDouble: 6282 ops/ms (6000000 items in 955ms average) at 6-2 split
+MyQueue2: 4629 ops/ms (2000000 items in 432ms average) at 2-6 split
+MyQueue2: 5366 ops/ms (3000000 items in 559ms average) at 3-5 split
+MyQueue2: 6144 ops/ms (4000000 items in 651ms average) at 4-4 split
+MyQueue2: 6954 ops/ms (5000000 items in 719ms average) at 5-3 split
+MyQueue2: 7117 ops/ms (6000000 items in 843ms average) at 6-2 split
+MyQueue2Double: 6153 ops/ms (2000000 items in 325ms average) at 2-6 split
+MyQueue2Double: 6147 ops/ms (3000000 items in 488ms average) at 3-5 split
+MyQueue2Double: 6389 ops/ms (4000000 items in 626ms average) at 4-4 split
+MyQueue2Double: 6738 ops/ms (5000000 items in 742ms average) at 5-3 split
+MyQueue2Double: 7326 ops/ms (6000000 items in 819ms average) at 6-2 split
+
+VyukovQueue: 4987 ops/ms (2000000 items in 401ms average) at 2-6 split
+VyukovQueue: 6666 ops/ms (3000000 items in 450ms average) at 3-5 split
+VyukovQueue: 7233 ops/ms (4000000 items in 553ms average) at 4-4 split
+VyukovQueue: 7331 ops/ms (5000000 items in 682ms average) at 5-3 split
+VyukovQueue: 7100 ops/ms (6000000 items in 845ms average) at 6-2 split
+MutexQueue: 1379 ops/ms (2000000 items in 1450ms average) at 2-6 split
+MutexQueue: 1962 ops/ms (3000000 items in 1529ms average) at 3-5 split
+MutexQueue: 2565 ops/ms (4000000 items in 1559ms average) at 4-4 split
+MutexQueue: 2837 ops/ms (5000000 items in 1762ms average) at 5-3 split
+MutexQueue: 3179 ops/ms (6000000 items in 1887ms average) at 6-2 split
+MutexQueueMiss: 154 ops/ms (2000000 items in 12907ms average) at 2-6 split
+MutexQueueMiss: 273 ops/ms (3000000 items in 10953ms average) at 3-5 split
+MutexQueueMiss: 503 ops/ms (4000000 items in 7947ms average) at 4-4 split
+MutexQueueMiss: 1014 ops/ms (5000000 items in 4930ms average) at 5-3 split
+MutexQueueMiss: 1841 ops/ms (6000000 items in 3258ms average) at 6-2 split
+MSQueue: 2398 ops/ms (2000000 items in 834ms average) at 2-6 split
+MSQueue: 2830 ops/ms (3000000 items in 1060ms average) at 3-5 split
+MSQueue: 3358 ops/ms (4000000 items in 1191ms average) at 4-4 split
+MSQueue: 3563 ops/ms (5000000 items in 1403ms average) at 5-3 split
+MSQueue: 3717 ops/ms (6000000 items in 1614ms average) at 6-2 split
+MSQueueMiss: 2853 ops/ms (2000000 items in 701ms average) at 2-6 split
+MSQueueMiss: 2816 ops/ms (3000000 items in 1065ms average) at 3-5 split
+MSQueueMiss: 3502 ops/ms (4000000 items in 1142ms average) at 4-4 split
+MSQueueMiss: 3734 ops/ms (5000000 items in 1339ms average) at 5-3 split
+MSQueueMiss: 3970 ops/ms (6000000 items in 1511ms average) at 6-2 split
+TwoLockQueue: 2976 ops/ms (2000000 items in 672ms average) at 2-6 split
+TwoLockQueue: 2991 ops/ms (3000000 items in 1003ms average) at 3-5 split
+TwoLockQueue: 3067 ops/ms (4000000 items in 1304ms average) at 4-4 split
+TwoLockQueue: 2942 ops/ms (5000000 items in 1699ms average) at 5-3 split
+TwoLockQueue: 3134 ops/ms (6000000 items in 1914ms average) at 6-2 split
+TwoLockQueueMiss: 1078 ops/ms (2000000 items in 1854ms average) at 2-6 split
+TwoLockQueueMiss: 1135 ops/ms (3000000 items in 2643ms average) at 3-5 split
+TwoLockQueueMiss: 1340 ops/ms (4000000 items in 2983ms average) at 4-4 split
+TwoLockQueueMiss: 1603 ops/ms (5000000 items in 3119ms average) at 5-3 split
+TwoLockQueueMiss: 1866 ops/ms (6000000 items in 3215ms average) at 6-2 split
